@@ -6,14 +6,18 @@ import Button from '@/Components/ui/Button.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useCurrency } from '@/composables/useCurrency';
 import { ArrowLeft, Plus, Trash2, PackageOpen } from 'lucide-vue-next';
 
 const { t } = useI18n();
+const { formatCurrency: formatCurrencyHelper } = useCurrency();
 
 const props = defineProps({
     order: Object,
     products: Array,
 });
+
+const formatCurrency = (value) => formatCurrencyHelper(value, props.order.currency);
 
 const form = useForm({
     customer_name: props.order.customer_name,
@@ -233,7 +237,7 @@ const fieldError = 'mt-1 text-xs text-status-danger';
                                             <label :class="fieldLabel">{{ t('common.subtotal') }}</label>
                                             <div class="flex h-9 items-center rounded-md border border-border-subtle bg-surface-sunken px-3">
                                                 <span class="text-sm font-semibold tabular-nums text-text-primary">
-                                                    ${{ ((item.quantity || 0) * (item.unit_price || 0)).toFixed(2) }}
+                                                    {{ formatCurrency((item.quantity || 0) * (item.unit_price || 0)) }}
                                                 </span>
                                             </div>
                                         </div>
@@ -303,7 +307,7 @@ const fieldError = 'mt-1 text-xs text-status-danger';
                         <div class="space-y-3 p-5">
                             <div class="flex justify-between text-sm">
                                 <span class="text-text-secondary">{{ t('common.subtotal') }}</span>
-                                <span class="font-medium tabular-nums text-text-primary">${{ subtotal.toFixed(2) }}</span>
+                                <span class="font-medium tabular-nums text-text-primary">{{ formatCurrency(subtotal) }}</span>
                             </div>
                             <div>
                                 <label for="tax" class="mb-1 block text-sm text-text-secondary">{{ t('common.tax') }}</label>
@@ -317,7 +321,7 @@ const fieldError = 'mt-1 text-xs text-status-danger';
                             </div>
                             <div class="flex items-center justify-between border-t border-border-subtle pt-3">
                                 <span class="text-sm font-semibold text-text-primary">{{ t('common.total') }}</span>
-                                <span class="text-xl font-bold text-brand">${{ total.toFixed(2) }}</span>
+                                <span class="text-xl font-bold text-brand">{{ formatCurrency(total) }}</span>
                             </div>
                         </div>
                     </Card>

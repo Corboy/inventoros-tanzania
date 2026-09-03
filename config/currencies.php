@@ -10,6 +10,10 @@ return [
     |
     */
     'supported' => [
+        'TZS' => ['symbol' => 'TSh', 'name' => 'Tanzanian Shilling'],
+        'KES' => ['symbol' => 'KSh', 'name' => 'Kenyan Shilling'],
+        'UGX' => ['symbol' => 'USh', 'name' => 'Ugandan Shilling'],
+        'RWF' => ['symbol' => 'FRw', 'name' => 'Rwandan Franc'],
         'USD' => ['symbol' => '$', 'name' => 'US Dollar'],
         'EUR' => ['symbol' => '€', 'name' => 'Euro'],
         'GBP' => ['symbol' => '£', 'name' => 'British Pound'],
@@ -46,5 +50,5 @@ return [
     | The default currency code used throughout the application.
     |
     */
-    'default' => env('DEFAULT_CURRENCY', 'USD'),
+    'default' => env('DEFAULT_CURRENCY', 'TZS'),
 ];

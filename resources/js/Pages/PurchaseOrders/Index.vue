@@ -9,9 +9,11 @@ import DataTable from '@/Components/ui/DataTable.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useCurrency } from '@/composables/useCurrency';
 import { Plus, Search, Eye, Pencil, Trash2, PackageCheck, ClipboardList } from 'lucide-vue-next';
 
 const { t } = useI18n();
+const { formatCurrency } = useCurrency();
 
 const props = defineProps({
     purchaseOrders: Object,
@@ -47,13 +49,6 @@ const deletePO = (po) => {
     if (confirm(`Are you sure you want to delete "${po.po_number}"?`)) {
         router.delete(route('purchase-orders.destroy', po.id));
     }
-};
-
-const formatCurrency = (value, currency = 'USD') => {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: currency,
-    }).format(value || 0);
 };
 
 const formatDate = (dateString) => {

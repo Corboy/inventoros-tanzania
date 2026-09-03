@@ -31,24 +31,24 @@ import {
 } from 'lucide-vue-next';
 
 const { t } = useI18n();
+const { formatCurrency } = useCurrency();
 const { hasPermission } = usePermissions();
 
 const props = defineProps({
     product: Object,
+    categories: Array,
+    locations: Array,
+    variants: Array,
+    batches: Array,
+    serials: Array,
     activities: Array,
-    locationBreakdown: { type: Array, default: () => [] },
+    activityMetrics: Object,
+    stockMovements: Array,
     pluginComponents: Object,
 });
 
 const barcodeImage = ref(null);
 const barcodeLoading = ref(false);
-
-const formatCurrency = (value) => {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-    }).format(value);
-};
 
 const getStockStatus = () => {
     if (props.product.stock <= 0) {

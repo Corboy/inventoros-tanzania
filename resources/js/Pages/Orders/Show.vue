@@ -9,11 +9,15 @@ import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import { usePermissions } from '@/composables/usePermissions';
 import { useI18n } from 'vue-i18n';
-import { ArrowLeft, Pencil, Download, Eye, Undo2, Trash2, X, AlertTriangle, PackageOpen } from 'lucide-vue-next';
+import { useCurrency } from '@/composables/useCurrency';
+import PosReceiptModal from '@/Components/PosReceiptModal.vue';
+import { ArrowLeft, Pencil, Download, Eye, Undo2, Trash2, X, AlertTriangle, PackageOpen, CreditCard, Printer } from 'lucide-vue-next';
 
 const { t } = useI18n();
-
+const { formatCurrency: formatCurrencyHelper } = useCurrency();
 const { hasPermission } = usePermissions();
+
+const formatCurrency = (value) => formatCurrencyHelper(value, props.order.currency);
 
 const props = defineProps({
     order: Object,
@@ -21,6 +25,7 @@ const props = defineProps({
     pluginComponents: Object,
 });
 
+const showReceiptModal = ref(false);
 const showDeleteModal = ref(false);
 const deleting = ref(false);
 
@@ -119,6 +124,15 @@ const formatDateShort = (date) => {
                 <Badge :variant="statusVariant(order.status)" size="sm" dot>{{ order.status }}</Badge>
                 <Badge v-if="order.approval_status" :variant="approvalStatusVariant(order.approval_status)" size="sm" dot>{{ order.approval_status }}</Badge>
                 <Button
+                    variant="default"
+                    size="sm"
+                    @click="showReceiptModal = true"
+                    class="bg-brand text-white font-semibold gap-1.5 shadow-sm"
+                >
+                    <Printer :size="14" />
+                    Risiti ya POS (Receipt)
+                </Button>
+                <Button
                     v-if="hasPermission('view_orders')"
                     variant="secondary"
                     size="sm"
@@ -201,13 +215,13 @@ const formatDateShort = (date) => {
 
                                 <div class="text-right">
                                     <p class="text-xs text-text-tertiary">{{ t('orders.show.unitPrice') }}</p>
-                                    <p class="font-medium tabular-nums text-text-primary">${{ parseFloat(item.unit_price).toFixed(2) }}</p>
+                                    <p class="font-medium tabular-nums text-text-primary">{{ formatCurrency(item.unit_price) }}</p>
                                 </div>
 
                                 <div class="min-w-[100px] text-right">
                                     <p class="text-xs text-text-tertiary">{{ t('common.total') }}</p>
                                     <p class="font-semibold tabular-nums text-text-primary">
-                                        ${{ parseFloat(item.total || item.subtotal || (item.quantity * item.unit_price)).toFixed(2) }}
+                                        {{ formatCurrency(item.total || item.subtotal || (item.quantity * item.unit_price)) }}
                                     </p>
                                 </div>
                             </div>
@@ -227,7 +241,17 @@ const formatDateShort = (date) => {
                         <dl class="space-y-3">
                             <div>
                                 <dt class="text-xs text-text-tertiary">{{ t('orders.show.customerName') }}</dt>
-                                <dd class="mt-1 text-sm text-text-primary">{{ order.customer_name }}</dd>
+                                <dd class="mt-1 text-sm font-semibold text-text-primary">{{ order.customer_name }}</dd>
+                            </div>
+
+                            <div v-if="order.metadata?.customer_phone">
+                                <dt class="text-xs text-text-tertiary">Nambari ya Simu (Phone)</dt>
+                                <dd class="mt-1 text-sm text-text-primary font-medium">{{ order.metadata.customer_phone }}</dd>
+                            </div>
+
+                            <div v-if="order.metadata?.customer_tin">
+                                <dt class="text-xs text-text-tertiary">TIN / VRN</dt>
+                                <dd class="mt-1 text-sm text-text-primary font-medium">{{ order.metadata.customer_tin }}</dd>
                             </div>
 
                             <div v-if="order.customer_email">
@@ -300,23 +324,23 @@ const formatDateShort = (date) => {
                         <dl class="space-y-3">
                             <div class="flex justify-between text-sm">
                                 <dt class="text-text-secondary">{{ t('common.subtotal') }}</dt>
-                                <dd class="font-medium tabular-nums text-text-primary">${{ parseFloat(order.subtotal).toFixed(2) }}</dd>
+                                <dd class="font-medium tabular-nums text-text-primary">{{ formatCurrency(order.subtotal) }}</dd>
                             </div>
 
                             <div class="flex justify-between text-sm">
                                 <dt class="text-text-secondary">{{ t('common.tax') }}</dt>
-                                <dd class="font-medium tabular-nums text-text-primary">${{ parseFloat(order.tax || 0).toFixed(2) }}</dd>
+                                <dd class="font-medium tabular-nums text-text-primary">{{ formatCurrency(order.tax || 0) }}</dd>
                             </div>
 
                             <div class="flex justify-between text-sm">
                                 <dt class="text-text-secondary">{{ t('common.shipping') }}</dt>
-                                <dd class="font-medium tabular-nums text-text-primary">${{ parseFloat(order.shipping || 0).toFixed(2) }}</dd>
+                                <dd class="font-medium tabular-nums text-text-primary">{{ formatCurrency(order.shipping || 0) }}</dd>
                             </div>
 
                             <div class="border-t border-border-subtle pt-3">
                                 <div class="flex items-center justify-between">
                                     <dt class="text-sm font-semibold text-text-primary">{{ t('common.total') }}</dt>
-                                    <dd class="text-xl font-bold tabular-nums text-brand">${{ parseFloat(order.total).toFixed(2) }}</dd>
+                                    <dd class="text-xl font-bold tabular-nums text-brand">{{ formatCurrency(order.total) }}</dd>
                                 </div>
                             </div>
                         </dl>
@@ -330,7 +354,17 @@ const formatDateShort = (date) => {
                         <dl class="space-y-3">
                             <div>
                                 <dt class="text-xs text-text-tertiary">{{ t('orders.show.orderNumber2') }}</dt>
-                                <dd class="mt-1 text-sm text-text-primary">{{ order.order_number }}</dd>
+                                <dd class="mt-1 text-sm font-bold text-text-primary">{{ order.order_number }}</dd>
+                            </div>
+
+                            <div v-if="order.metadata?.payment_method">
+                                <dt class="text-xs text-text-tertiary">{{ t('orders.create.paymentMethod') }}</dt>
+                                <dd class="mt-1">
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold uppercase bg-brand/10 text-brand">
+                                        <CreditCard :size="13" />
+                                        {{ order.metadata.payment_method }}
+                                    </span>
+                                </dd>
                             </div>
 
                             <div>
@@ -526,5 +560,13 @@ const formatDateShort = (date) => {
                 </div>
             </div>
         </Teleport>
+
+        <!-- Thermal POS Receipt Modal (58mm / 80mm) -->
+        <PosReceiptModal
+            :show="showReceiptModal"
+            :order="order"
+            :organization="$page.props.auth?.user?.organization || {}"
+            @close="showReceiptModal = false"
+        />
     </AppLayout>
 </template>

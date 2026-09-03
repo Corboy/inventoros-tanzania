@@ -28,7 +28,7 @@ const form = useForm({
     country: props.supplier.country || '',
     website: props.supplier.website || '',
     payment_terms: props.supplier.payment_terms || '',
-    currency: props.supplier.currency || 'USD',
+    currency: props.supplier.currency || 'TZS',
     notes: props.supplier.notes || '',
     is_active: props.supplier.is_active ?? true,
 });
@@ -170,11 +170,12 @@ const fieldError = 'mt-1 text-xs text-status-danger';
                         <div>
                             <label for="currency" :class="fieldLabel">{{ t('common.currency') }}</label>
                             <select id="currency" v-model="form.currency" :class="fieldInput">
+                                <option value="TZS">TZS - Shilingi ya Tanzania (TSh)</option>
+                                <option value="KES">KES - Kenyan Shilling</option>
+                                <option value="UGX">UGX - Ugandan Shilling</option>
                                 <option value="USD">{{ t('purchaseOrders.currencies.usd') }}</option>
                                 <option value="EUR">{{ t('purchaseOrders.currencies.eur') }}</option>
                                 <option value="GBP">{{ t('purchaseOrders.currencies.gbp') }}</option>
-                                <option value="CAD">{{ t('purchaseOrders.currencies.cad') }}</option>
-                                <option value="AUD">{{ t('purchaseOrders.currencies.aud') }}</option>
                             </select>
                             <p v-if="form.errors.currency" :class="fieldError">{{ form.errors.currency }}</p>
                         </div>

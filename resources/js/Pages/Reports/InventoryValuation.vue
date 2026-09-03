@@ -15,21 +15,16 @@ import {
     Download,
     ArrowLeft,
 } from 'lucide-vue-next';
+import { useCurrency } from '@/composables/useCurrency';
 
 const { t } = useI18n();
+const { formatCurrency } = useCurrency();
 
 const props = defineProps({
     products: Array,
     summary: Object,
     byCategory: Array,
 });
-
-const formatCurrency = (value) => {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-    }).format(value);
-};
 
 const exportCsv = () => {
     const headers = [

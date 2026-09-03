@@ -9,6 +9,7 @@ import StatTile from '@/Components/ui/StatTile.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useCurrency } from '@/composables/useCurrency';
 import {
     ArrowLeft,
     Download,
@@ -19,6 +20,7 @@ import {
 } from 'lucide-vue-next';
 
 const { t } = useI18n();
+const { formatCurrency } = useCurrency();
 
 const props = defineProps({
     summary: Object,
@@ -39,13 +41,6 @@ const applyFilters = () => {
         preserveState: true,
         preserveScroll: true,
     });
-};
-
-const formatCurrency = (value) => {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-    }).format(value);
 };
 
 const exportReport = () => {

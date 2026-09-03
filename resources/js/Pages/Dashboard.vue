@@ -26,7 +26,10 @@ import {
     X,
 } from 'lucide-vue-next';
 
+import { useCurrency } from '@/composables/useCurrency';
+
 const { t } = useI18n();
+const { formatCurrency, getCurrencySymbol } = useCurrency();
 
 const props = defineProps({
     stats: Object,
@@ -71,9 +74,6 @@ const saveWidgetPreferences = async () => {
     }
 };
 
-const formatCurrency = (value) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value ?? 0);
-
 const formatNumber = (value) => {
     const v = Number(value ?? 0);
     if (v >= 1000000) return (v / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
@@ -83,7 +83,8 @@ const formatNumber = (value) => {
 
 const formatCompactCurrency = (value) => {
     const f = formatNumber(value);
-    return f.endsWith('K') || f.endsWith('M') ? '$' + f : formatCurrency(value);
+    const sym = getCurrencySymbol();
+    return f.endsWith('K') || f.endsWith('M') ? `${sym} ${f}` : formatCurrency(value);
 };
 
 const orderStatusVariant = (status) =>

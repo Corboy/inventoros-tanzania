@@ -16,20 +16,15 @@ import {
     ArrowLeft,
     Download,
 } from 'lucide-vue-next';
+import { useCurrency } from '@/composables/useCurrency';
 
 const { t } = useI18n();
+const { formatCurrency } = useCurrency();
 
 const props = defineProps({
     categories: Array,
     summary: Object,
 });
-
-const formatCurrency = (value) => {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-    }).format(value);
-};
 
 // Largest category value, used to scale the bar visuals.
 const maxValue = computed(() =>

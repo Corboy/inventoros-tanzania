@@ -65,6 +65,22 @@ final class OrderService
         $data['created_by'] = $creator->id;
         $data['source'] = $source;
         $data['approval_status'] ??= 'pending';
+        $data['currency'] ??= $creator->organization?->currency ?? config('currencies.default', 'TZS');
+
+        // Preserve payment_method and Tanzania metadata
+        $metadata = $data['metadata'] ?? [];
+        if (!empty($data['payment_method'])) {
+            $metadata['payment_method'] = $data['payment_method'];
+        }
+        if (!empty($data['customer_phone'])) {
+            $metadata['customer_phone'] = $data['customer_phone'];
+        }
+        if (!empty($data['customer_tin'])) {
+            $metadata['customer_tin'] = $data['customer_tin'];
+        }
+        if (!empty($metadata)) {
+            $data['metadata'] = $metadata;
+        }
 
         $order = SequenceNumberRetry::create(fn () => DB::transaction(function () use ($data, $creator) {
             $orgId = $data['organization_id'];

@@ -11,7 +11,10 @@ import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Plus, Search, Eye, Pencil, Trash2, ShoppingCart } from 'lucide-vue-next';
 
+import { useCurrency } from '@/composables/useCurrency';
+
 const { t } = useI18n();
+const { formatCurrency } = useCurrency();
 
 const props = defineProps({
     orders: Object,
@@ -24,9 +27,6 @@ const props = defineProps({
 const search = ref(props.filters?.search || '');
 const status = ref(props.filters?.status || '');
 const source = ref(props.filters?.source || '');
-
-const formatCurrency = (value) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
 
 const searchOrders = () => {
     router.get(route('orders.index'), {

@@ -17,6 +17,15 @@ use Illuminate\Validation\Rule;
  */
 final class StoreOrderRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        if (blank($this->input('customer_name'))) {
+            $this->merge([
+                'customer_name' => 'Walk-in Customer',
+            ]);
+        }
+    }
+
     /**
      * @return array<string, ValidationRule|array<mixed>|string>
      */
@@ -25,9 +34,13 @@ final class StoreOrderRequest extends FormRequest
         $organizationId = $this->user()->organization_id;
 
         return [
-            'customer_name' => 'required|string|max:255',
+            'customer_name' => 'nullable|string|max:255',
             'customer_email' => 'nullable|email|max:255',
+            'customer_phone' => 'nullable|string|max:50',
+            'customer_tin' => 'nullable|string|max:50',
             'customer_address' => 'nullable|string',
+            'payment_method' => 'nullable|string|max:50',
+            'currency' => 'nullable|string|max:3',
             'status' => 'required|in:pending,processing,shipped,delivered,cancelled',
             'order_date' => 'required|date',
             'shipping' => 'nullable|numeric|min:0',

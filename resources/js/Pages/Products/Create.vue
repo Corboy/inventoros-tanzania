@@ -13,9 +13,11 @@ import { ref, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import axios from 'axios';
 import ImageUploader from '@/Components/ImageUploader.vue';
+import { useCurrency } from '@/composables/useCurrency';
 import { ArrowLeft, Zap, X, Plus, Trash2, ChevronDown, Layers } from 'lucide-vue-next';
 
 const { t } = useI18n();
+const { formatCurrency, getCurrencySymbol: getCurrencySymbolFallback } = useCurrency();
 
 const props = defineProps({
     categories: Array,
@@ -31,10 +33,10 @@ const form = useForm({
     sku: '',
     price: '',
     purchase_price: '',
-    currency: props.defaultCurrency || 'USD',
+    currency: props.defaultCurrency || 'TZS',
     price_in_currencies: [],
     stock: '',
-    min_stock: '',
+    min_stock: '0',
     reorder_point: '',
     reorder_quantity: '',
     category_id: '',
@@ -155,6 +157,15 @@ const createLocation = async () => {
 };
 
 const submit = () => {
+    // If SKU is left empty, auto-generate a clean human-readable SKU
+    if (!form.sku || !form.sku.trim()) {
+        const cleanName = (form.name || 'PRD').replace(/[^a-zA-Z0-9]/g, '').substring(0, 3).toUpperCase() || 'PRD';
+        form.sku = `${cleanName}-${Math.floor(1000 + Math.random() * 9000)}`;
+    }
+    if (form.min_stock === '' || form.min_stock === null || form.min_stock === undefined) {
+        form.min_stock = '0';
+    }
+
     // Add additional currencies to form data
     form.price_in_currencies = additionalCurrencies.value.filter(c => c.price);
 

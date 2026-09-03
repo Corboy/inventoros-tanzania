@@ -48,10 +48,13 @@ const timezones = [
 ];
 
 const currencies = [
-    { value: 'CAD', label: 'CAD - Canadian Dollar' },
+    { value: 'TZS', label: 'TZS - Shilingi ya Tanzania (TSh)' },
+    { value: 'KES', label: 'KES - Kenyan Shilling' },
+    { value: 'UGX', label: 'UGX - Ugandan Shilling' },
     { value: 'USD', label: 'USD - US Dollar' },
     { value: 'EUR', label: 'EUR - Euro' },
     { value: 'GBP', label: 'GBP - British Pound' },
+    { value: 'CAD', label: 'CAD - Canadian Dollar' },
 ];
 
 const userSearch = ref('');

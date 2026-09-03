@@ -10,7 +10,10 @@ import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Pencil, ArrowLeft, Trash2, ShoppingCart, Wallet, PackageOpen } from 'lucide-vue-next';
 
+import { useCurrency } from '@/composables/useCurrency';
+
 const { t } = useI18n();
+const { formatCurrency: formatCurrencyHelper } = useCurrency();
 
 const props = defineProps({
     customer: Object,
@@ -22,11 +25,7 @@ const totalSpend = computed(() =>
     orders.value.reduce((sum, o) => sum + parseFloat(o.total || 0), 0)
 );
 
-const formatCurrency = (value) =>
-    new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: props.customer.currency || 'USD',
-    }).format(value || 0);
+const formatCurrency = (value) => formatCurrencyHelper(value, props.customer.currency);
 
 const formatDate = (date) => (date ? new Date(date).toLocaleDateString() : '-');
 

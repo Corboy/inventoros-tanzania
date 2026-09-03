@@ -17,6 +17,25 @@ use Illuminate\Validation\Rule;
  */
 final class StoreProductRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        if (blank($this->input('sku'))) {
+            $name = (string) ($this->input('name') ?: 'PRD');
+            $prefix = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $name) ?: 'PRD', 0, 3));
+            $orgId = $this->user()?->organization_id;
+
+            do {
+                $candidate = sprintf('%s-%04d', $prefix, random_int(1000, 9999));
+            } while (\App\Models\Inventory\Product::where('organization_id', $orgId)->where('sku', $candidate)->exists());
+
+            $this->merge(['sku' => $candidate]);
+        }
+
+        if ($this->input('min_stock') === null || $this->input('min_stock') === '') {
+            $this->merge(['min_stock' => 0]);
+        }
+    }
+
     /**
      * @return array<string, mixed>
      */

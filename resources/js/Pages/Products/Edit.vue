@@ -13,9 +13,11 @@ import { ref, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import axios from 'axios';
 import ImageUploader from '@/Components/ImageUploader.vue';
+import { useCurrency } from '@/composables/useCurrency';
 import { ArrowLeft, Eye, Zap, ChevronDown, Layers, Info, X, Trash2 } from 'lucide-vue-next';
 
 const { t } = useI18n();
+const { formatCurrency, getCurrencySymbol: getCurrencySymbolFallback } = useCurrency();
 
 const props = defineProps({
     product: Object,
@@ -293,9 +295,9 @@ const fieldError = 'mt-1 text-xs text-status-danger';
                             <label for="purchase_price" :class="fieldLabel">{{ t('products.create.purchasePrice') }}</label>
                             <div class="relative">
                                 <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                                    <span class="text-sm text-text-tertiary">$</span>
+                                    <span class="text-sm text-text-tertiary">{{ getCurrencySymbol(form.currency || product.currency) }}</span>
                                 </div>
-                                <input id="purchase_price" v-model="form.purchase_price" type="number" step="0.01" min="0" :class="[fieldInput, 'pl-7']" />
+                                <input id="purchase_price" v-model="form.purchase_price" type="number" step="0.01" min="0" :class="[fieldInput, 'pl-8']" />
                             </div>
                             <p class="mt-1 text-xs text-text-tertiary">{{ t('products.create.purchasePriceHint') }}</p>
                             <p v-if="form.errors.purchase_price" :class="fieldError">{{ form.errors.purchase_price }}</p>
@@ -308,9 +310,9 @@ const fieldError = 'mt-1 text-xs text-status-danger';
                             </label>
                             <div class="relative">
                                 <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                                    <span class="text-sm text-text-tertiary">$</span>
+                                    <span class="text-sm text-text-tertiary">{{ getCurrencySymbol(form.currency || product.currency) }}</span>
                                 </div>
-                                <input id="price" v-model="form.price" type="number" step="0.01" min="0" :class="[fieldInput, 'pl-7']" required />
+                                <input id="price" v-model="form.price" type="number" step="0.01" min="0" :class="[fieldInput, 'pl-8']" required />
                             </div>
                             <p class="mt-1 text-xs text-text-tertiary">{{ t('products.create.sellingPriceHint') }}</p>
                             <p v-if="form.errors.price" :class="fieldError">{{ form.errors.price }}</p>
@@ -321,7 +323,7 @@ const fieldError = 'mt-1 text-xs text-status-danger';
                             <div class="flex items-center justify-between">
                                 <span class="text-sm font-medium text-status-success">{{ t('products.create.profitPerUnit') }}:</span>
                                 <span class="text-lg font-bold text-status-success">
-                                    ${{ (parseFloat(form.price) - parseFloat(form.purchase_price)).toFixed(2) }}
+                                    {{ formatCurrency(parseFloat(form.price) - parseFloat(form.purchase_price), form.currency || product.currency) }}
                                 </span>
                             </div>
                             <div class="mt-1 flex items-center justify-between">

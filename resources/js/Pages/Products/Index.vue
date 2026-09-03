@@ -16,8 +16,10 @@ import {
 // until the user actually opens the scanner.
 const BarcodeScannerModal = defineAsyncComponent(() => import('@/Components/BarcodeScannerModal.vue'));
 import { useI18n } from 'vue-i18n';
+import { useCurrency } from '@/composables/useCurrency';
 
 const { t } = useI18n();
+const { formatCurrency } = useCurrency();
 
 const props = defineProps({
     products: Object,
@@ -107,9 +109,6 @@ const printSelectedBarcodes = () => {
 const printBarcode = (productId) => {
     window.open(route('products.barcode.print', productId), '_blank');
 };
-
-const formatCurrency = (value) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
 
 const searchProducts = () => {
     router.get(route('products.index'), {

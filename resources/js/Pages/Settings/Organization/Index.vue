@@ -37,8 +37,8 @@ const submitGeneral = () => {
 
 // Regional settings form
 const regionalForm = useForm({
-    currency: props.organization.currency || 'USD',
-    timezone: props.organization.timezone || 'UTC',
+    currency: props.organization.currency || 'TZS',
+    timezone: props.organization.timezone || 'Africa/Dar_es_Salaam',
     date_format: props.organization.date_format || 'Y-m-d',
     time_format: props.organization.time_format || 'H:i',
 });
@@ -244,7 +244,7 @@ const tabs = [
                                     type="text"
                                     :class="fieldInput"
                                     :disabled="!isAdmin"
-                                    placeholder="USD"
+                                    placeholder="TZS"
                                 />
                                 <p v-if="regionalForm.errors.currency" :class="fieldError">{{ regionalForm.errors.currency }}</p>
                             </div>
@@ -256,7 +256,7 @@ const tabs = [
                                     type="text"
                                     :class="fieldInput"
                                     :disabled="!isAdmin"
-                                    placeholder="UTC"
+                                    placeholder="Africa/Dar_es_Salaam"
                                 />
                                 <p v-if="regionalForm.errors.timezone" :class="fieldError">{{ regionalForm.errors.timezone }}</p>
                             </div>

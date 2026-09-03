@@ -8,6 +8,7 @@ import Button from '@/Components/ui/Button.vue';
 import Badge from '@/Components/ui/Badge.vue';
 import { Head, Link } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
+import { useCurrency } from '@/composables/useCurrency';
 import {
     AlertTriangle,
     PackageX,
@@ -17,18 +18,12 @@ import {
 } from 'lucide-vue-next';
 
 const { t } = useI18n();
+const { formatCurrency } = useCurrency();
 
 const props = defineProps({
     products: Array,
     summary: Object,
 });
-
-const formatCurrency = (value) => {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-    }).format(value);
-};
 
 const statusVariant = (status) => (status === 'out_of_stock' ? 'danger' : 'warning');
 
