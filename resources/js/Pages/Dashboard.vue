@@ -9,7 +9,7 @@ import Badge from '@/Components/ui/Badge.vue';
 import Button from '@/Components/ui/Button.vue';
 import DataTable from '@/Components/ui/DataTable.vue';
 import { Head, Link } from '@inertiajs/vue3';
-import { ref, reactive } from 'vue';
+import { ref, reactive, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import axios from 'axios';
 import {
@@ -33,8 +33,11 @@ const { formatCurrency, getCurrencySymbol } = useCurrency();
 
 const props = defineProps({
     stats: Object,
+    stockAlerts: Object,
     recentProducts: Array,
     lowStockProducts: Array,
+    outOfStockProducts: Array,
+    stagnantProducts: Array,
     reorderSuggestions: Array,
     recentOrders: Array,
     stockByCategory: Array,
@@ -42,6 +45,16 @@ const props = defineProps({
     pluginComponents: Object,
 });
 
+const activeAlertTab = ref('low_stock');
+const currentAlertProducts = computed(() => {
+    if (activeAlertTab.value === 'out_of_stock') {
+        return props.outOfStockProducts || [];
+    }
+    if (activeAlertTab.value === 'stagnant') {
+        return props.stagnantProducts || [];
+    }
+    return props.lowStockProducts || [];
+});
 const showCustomizeModal = ref(false);
 const saving = ref(false);
 
@@ -203,6 +216,117 @@ const secondaryStats = () => [
             </component>
         </section>
 
+        <!-- Stock Health & Action Radar (Apple / Linear-style high-impact alert cards) -->
+        <section class="mt-4">
+            <div class="rounded-xl border border-border-subtle bg-surface-raised p-4 sm:p-5 shadow-xs">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-border-subtle">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="relative flex h-3 w-3">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-status-danger opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-3 w-3 bg-status-danger"></span>
+                            </span>
+                            <h2 class="text-sm sm:text-base font-bold text-text-primary tracking-tight">
+                                Rada ya Akiba na Tahadhari za Mauzo (Stock Health Radar)
+                            </h2>
+                        </div>
+                        <p class="text-xs text-text-tertiary mt-0.5">
+                            Gundua na chukua hatua haraka kuzuia biashara isipoteze wateja wala kuzuia mtaji
+                        </p>
+                    </div>
+                    <Link
+                        :href="route('products.index')"
+                        class="text-xs font-semibold text-brand hover:text-brand-hover inline-flex items-center gap-1 self-start sm:self-auto"
+                    >
+                        Tazama Orodha ya Bidhaa Zote →
+                    </Link>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                    <!-- 1. Out of Stock Card -->
+                    <Link
+                        :href="route('products.index', { stock_status: 'out_of_stock' })"
+                        class="group relative overflow-hidden rounded-xl border-2 border-status-danger/30 bg-status-danger/5 p-4 transition-all hover:border-status-danger hover:shadow-md hover:bg-status-danger/10 flex flex-col justify-between cursor-pointer"
+                    >
+                        <div>
+                            <div class="flex items-center justify-between">
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-status-danger text-white shadow-xs">
+                                    ❌ Zilizokwisha
+                                </span>
+                                <span class="text-2xl sm:text-3xl font-black text-status-danger tabular-nums">
+                                    {{ stockAlerts?.out_of_stock_count ?? stats.outOfStockProducts ?? 0 }}
+                                </span>
+                            </div>
+                            <h3 class="mt-3 text-sm font-bold text-text-primary group-hover:text-status-danger transition-colors">
+                                Bidhaa Zilizokwisha Kabisa (0 Stoo)
+                            </h3>
+                            <p class="mt-1 text-xs text-text-secondary leading-relaxed">
+                                Wateja wakija hawapati bidhaa! Agiza mara moja kwa wauzaji wa jumla ili usipoteze faida na wateja.
+                            </p>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-status-danger/20 flex items-center justify-between text-xs font-semibold text-status-danger">
+                            <span>Fungua Orodha ya Zilizokwisha</span>
+                            <span class="group-hover:translate-x-1 transition-transform">→</span>
+                        </div>
+                    </Link>
+
+                    <!-- 2. Low Stock Card -->
+                    <Link
+                        :href="route('products.index', { stock_status: 'low_stock' })"
+                        class="group relative overflow-hidden rounded-xl border-2 border-status-warning/40 bg-status-warning/5 p-4 transition-all hover:border-status-warning hover:shadow-md hover:bg-status-warning/10 flex flex-col justify-between cursor-pointer"
+                    >
+                        <div>
+                            <div class="flex items-center justify-between">
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-status-warning text-black shadow-xs">
+                                    ⚠️ Zilizobaki Kidogo
+                                </span>
+                                <span class="text-2xl sm:text-3xl font-black text-status-warning tabular-nums">
+                                    {{ stockAlerts?.low_stock_count ?? stats.lowStockProducts ?? 0 }}
+                                </span>
+                            </div>
+                            <h3 class="mt-3 text-sm font-bold text-text-primary group-hover:text-status-warning transition-colors">
+                                Chini ya Kiwango (Low Stock)
+                            </h3>
+                            <p class="mt-1 text-xs text-text-secondary leading-relaxed">
+                                Zipo chini ya kiwango salama ulichoweka. Weka oda mapema kabla hazijaisha kabisa.
+                            </p>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-status-warning/20 flex items-center justify-between text-xs font-semibold text-status-warning">
+                            <span>Fungua Orodha ya Zilizobaki Kidogo</span>
+                            <span class="group-hover:translate-x-1 transition-transform">→</span>
+                        </div>
+                    </Link>
+
+                    <!-- 3. Stagnant Stock Card -->
+                    <Link
+                        :href="route('products.index', { stock_status: 'stagnant' })"
+                        class="group relative overflow-hidden rounded-xl border-2 border-purple-500/30 bg-purple-500/5 p-4 transition-all hover:border-purple-500 hover:shadow-md hover:bg-purple-500/10 flex flex-col justify-between cursor-pointer"
+                    >
+                        <div>
+                            <div class="flex items-center justify-between">
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-purple-600 text-white shadow-xs">
+                                    ⏳ Zilizokaa Muda Mrefu
+                                </span>
+                                <span class="text-2xl sm:text-3xl font-black text-purple-600 dark:text-purple-400 tabular-nums">
+                                    {{ stockAlerts?.stagnant_count ?? stats.stagnantProducts ?? 0 }}
+                                </span>
+                            </div>
+                            <h3 class="mt-3 text-sm font-bold text-text-primary group-hover:text-purple-600 transition-colors">
+                                Bidhaa Zilizolala (Dead / Slow Moving)
+                            </h3>
+                            <p class="mt-1 text-xs text-text-secondary leading-relaxed">
+                                Zipo stoo kwa zaidi ya siku 30 bila mauzo. Fanya ofa, tangaza au punguza bei ili urudishe mtaji wako haraka.
+                            </p>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-purple-500/20 flex items-center justify-between text-xs font-semibold text-purple-600 dark:text-purple-400">
+                            <span>Fungua Orodha ya Zilizolala</span>
+                            <span class="group-hover:translate-x-1 transition-transform">→</span>
+                        </div>
+                    </Link>
+                </div>
+            </div>
+        </section>
+
         <!-- Plugin Slot: After Stats -->
         <PluginSlot slot="after-stats" :components="pluginComponents?.afterStats" />
         <!-- Plugin Slot: Before Content Grid -->
@@ -257,35 +381,92 @@ const secondaryStats = () => [
                 </div>
             </Card>
 
-            <!-- Low Stock Alerts -->
+            <!-- Low Stock & Stock Risk Alerts -->
             <Card v-if="widgets.low_stock_alerts" :padded="false">
-                <div class="px-5 pt-5">
-                    <CardHeader :title="t('dashboard.lowStockAlert')">
-                        <template #actions>
-                            <Link :href="route('products.index', { low_stock: 1 })" class="text-xs text-text-tertiary transition-colors hover:text-text-primary">
-                                {{ t('dashboard.viewAll') }}
-                            </Link>
-                        </template>
-                    </CardHeader>
-                </div>
-                <div class="p-3">
-                    <div v-if="lowStockProducts.length === 0" class="flex flex-col items-center gap-2 py-8 text-center">
-                        <CheckCircle2 :size="20" class="text-status-success" />
-                        <p class="text-sm text-text-tertiary">{{ t('dashboard.allWellStocked') }}</p>
+                <div class="px-5 pt-4 pb-3 border-b border-border-subtle">
+                    <div class="flex items-center justify-between mb-2.5">
+                        <CardHeader :title="t('dashboard.lowStockAlert')">
+                            <template #actions>
+                                <Link
+                                    :href="route('products.index', { stock_status: activeAlertTab })"
+                                    class="text-xs text-brand font-semibold transition-colors hover:text-brand-hover"
+                                >
+                                    {{ t('dashboard.viewAll') }} →
+                                </Link>
+                            </template>
+                        </CardHeader>
                     </div>
-                    <ul v-else class="space-y-0.5">
-                        <li v-for="product in lowStockProducts" :key="product.id">
+
+                    <!-- Sub-tabs for switching between alert types -->
+                    <div class="grid grid-cols-3 gap-1 bg-surface-sunken p-1 rounded-lg border border-border-subtle text-xs">
+                        <button
+                            type="button"
+                            @click="activeAlertTab = 'low_stock'"
+                            :class="[
+                                'py-1 px-1.5 rounded-md text-center font-medium transition-all text-[11px] truncate',
+                                activeAlertTab === 'low_stock'
+                                    ? 'bg-surface-base text-status-warning shadow-xs font-bold'
+                                    : 'text-text-tertiary hover:text-text-secondary'
+                            ]"
+                        >
+                            ⚠️ Chini ({{ stockAlerts?.low_stock_count ?? stats.lowStockProducts ?? 0 }})
+                        </button>
+                        <button
+                            type="button"
+                            @click="activeAlertTab = 'out_of_stock'"
+                            :class="[
+                                'py-1 px-1.5 rounded-md text-center font-medium transition-all text-[11px] truncate',
+                                activeAlertTab === 'out_of_stock'
+                                    ? 'bg-surface-base text-status-danger shadow-xs font-bold'
+                                    : 'text-text-tertiary hover:text-text-secondary'
+                            ]"
+                        >
+                            ❌ Kwisha ({{ stockAlerts?.out_of_stock_count ?? stats.outOfStockProducts ?? 0 }})
+                        </button>
+                        <button
+                            type="button"
+                            @click="activeAlertTab = 'stagnant'"
+                            :class="[
+                                'py-1 px-1.5 rounded-md text-center font-medium transition-all text-[11px] truncate',
+                                activeAlertTab === 'stagnant'
+                                    ? 'bg-surface-base text-purple-600 dark:text-purple-400 shadow-xs font-bold'
+                                    : 'text-text-tertiary hover:text-text-secondary'
+                            ]"
+                        >
+                            ⏳ Lala ({{ stockAlerts?.stagnant_count ?? stats.stagnantProducts ?? 0 }})
+                        </button>
+                    </div>
+                </div>
+
+                <div class="p-3">
+                    <div v-if="currentAlertProducts.length === 0" class="flex flex-col items-center gap-2 py-8 text-center">
+                        <CheckCircle2 :size="20" class="text-status-success" />
+                        <p class="text-sm font-medium text-text-secondary">Hakuna bidhaa katika hali hii</p>
+                        <p class="text-xs text-text-tertiary">Akiba ya kundi hili ipo sawa kabisa.</p>
+                    </div>
+                    <ul v-else class="space-y-1">
+                        <li v-for="product in currentAlertProducts" :key="product.id">
                             <Link
                                 :href="route('products.show', product.id)"
-                                class="flex items-center justify-between gap-3 rounded-md px-2 py-2.5 transition-colors hover:bg-surface-overlay"
+                                class="flex items-center justify-between gap-3 rounded-lg px-2.5 py-2 transition-colors hover:bg-surface-overlay border border-transparent hover:border-border-subtle"
                             >
-                                <div class="min-w-0">
+                                <div class="min-w-0 flex-1">
                                     <p class="truncate text-sm font-medium text-text-primary">{{ product.name }}</p>
                                     <p class="truncate text-xs text-text-tertiary">
-                                        {{ product.category?.name }} <span v-if="product.location">· {{ product.location?.name }}</span>
+                                        {{ product.category?.name || 'Bila Kategoria' }} <span v-if="product.location">· {{ product.location?.name }}</span>
                                     </p>
                                 </div>
-                                <Badge variant="danger" size="sm" dot>{{ product.stock }} / {{ product.min_stock }}</Badge>
+                                <div>
+                                    <Badge v-if="product.stock <= 0" variant="danger" size="sm">
+                                        ❌ Imeisha
+                                    </Badge>
+                                    <Badge v-else-if="product.stock <= product.min_stock" variant="warning" size="sm">
+                                        ⚠️ {{ product.stock }} / Min: {{ product.min_stock }}
+                                    </Badge>
+                                    <Badge v-else variant="neutral" size="sm">
+                                        ⏳ Stoo: {{ product.stock }}
+                                    </Badge>
+                                </div>
                             </Link>
                         </li>
                     </ul>

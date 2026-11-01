@@ -64,6 +64,17 @@ class ProductController extends Controller
             ->when($request->input('location'), function ($query, $location) {
                 $query->where('location_id', $location);
             })
+            ->when($request->input('stock_status'), function ($query, $status) {
+                if ($status === 'low_stock') {
+                    $query->lowStock();
+                } elseif ($status === 'out_of_stock') {
+                    $query->outOfStock();
+                } elseif ($status === 'stagnant') {
+                    $query->stagnant(30);
+                } elseif ($status === 'in_stock') {
+                    $query->whereColumn('stock', '>', 'min_stock');
+                }
+            })
             ->when($request->input('low_stock'), function ($query) {
                 $query->lowStock();
             })
@@ -89,11 +100,19 @@ class ProductController extends Controller
             ->active()
             ->get(['id', 'name']);
 
+        $stockCounts = [
+            'total' => Product::forOrganization($organizationId)->count(),
+            'low_stock' => Product::forOrganization($organizationId)->lowStock()->count(),
+            'out_of_stock' => Product::forOrganization($organizationId)->outOfStock()->count(),
+            'stagnant' => Product::forOrganization($organizationId)->stagnant(30)->count(),
+        ];
+
         $data = [
             'products' => $products,
-            'filters' => $request->only(['search', 'category', 'location', 'low_stock']),
+            'filters' => $request->only(['search', 'category', 'location', 'low_stock', 'stock_status']),
             'categories' => $categories,
             'locations' => $locations,
+            'stockCounts' => $stockCounts,
             'pluginComponents' => [
                 'header' => get_page_components('products.index', 'header'),
                 'beforeTable' => get_page_components('products.index', 'before-table'),

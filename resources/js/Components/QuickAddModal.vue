@@ -1,4 +1,6 @@
 <script setup>
+import { useI18n } from 'vue-i18n';
+
 defineProps({
     show: {
         type: Boolean,
@@ -17,7 +19,6 @@ defineProps({
         default: 'md' // sm, md, lg, xl, 2xl
     }
 });
-
 
 const { t } = useI18n();
 const emit = defineEmits(['close']);

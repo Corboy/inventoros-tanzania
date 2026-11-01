@@ -104,7 +104,7 @@ class OrderController extends Controller
         $products = Product::forOrganization($organizationId)
             ->active()
             ->with(['category', 'location'])
-            ->get(['id', 'name', 'sku', 'price', 'stock', 'category_id', 'location_id']);
+            ->get(['id', 'name', 'sku', 'price', 'wholesale_price', 'unit', 'stock', 'category_id', 'location_id']);
 
         $warehouses = Warehouse::forOrganization($organizationId)
             ->active()

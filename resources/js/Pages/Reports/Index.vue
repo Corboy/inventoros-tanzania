@@ -15,6 +15,8 @@ import {
     Wrench,
     ChevronRight,
     Plus,
+    Calendar,
+    Clock,
 } from 'lucide-vue-next';
 
 const { t } = useI18n();
@@ -28,6 +30,12 @@ const props = defineProps({
 
 const reportCards = [
     {
+        href: route('reports.sales-analysis'),
+        icon: TrendingUp,
+        title: t('reports.salesAnalysis.title'),
+        description: t('reports.salesAnalysis.description'),
+    },
+    {
         href: route('reports.inventory-valuation'),
         icon: DollarSign,
         title: t('reports.inventoryValuation.title'),
@@ -38,12 +46,6 @@ const reportCards = [
         icon: ArrowLeftRight,
         title: t('reports.stockMovement.title'),
         description: t('reports.stockMovement.description'),
-    },
-    {
-        href: route('reports.sales-analysis'),
-        icon: TrendingUp,
-        title: t('reports.salesAnalysis.title'),
-        description: t('reports.salesAnalysis.description'),
     },
     {
         href: route('reports.low-stock'),
@@ -72,13 +74,45 @@ const reportCards = [
     <AppLayout>
         <template #header>
             <div class="flex items-center gap-2 text-xs">
-                <span class="text-text-tertiary">Workspace</span>
+                <span class="text-text-tertiary">Biashara</span>
                 <span class="text-text-tertiary">/</span>
                 <span class="font-medium text-text-primary">{{ t('reports.title') }}</span>
             </div>
         </template>
 
         <PageHeader :title="t('reports.title')" :description="t('reports.subtitle')" />
+
+        <!-- Quick Periodic Report Launcher (Siku, Wiki, Mwezi, Mwaka) -->
+        <div class="mt-6 overflow-hidden rounded-2xl border border-border-subtle bg-gradient-to-r from-brand/5 via-surface-card to-emerald-500/5 p-5 shadow-xs">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <span class="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-brand">
+                        <Clock :size="12" />
+                        Ripoti za Wakati (Periodic Reports)
+                    </span>
+                    <h2 class="text-base font-bold text-text-primary mt-0.5">Uchanganuzi wa Mauzo & Faida kwa Kipindi</h2>
+                    <p class="text-xs text-text-secondary mt-0.5">Chagua kipindi cha haraka kutazama mapato, faida halisi, gharama za bidhaa na njia za malipo.</p>
+                </div>
+                <div class="flex items-center gap-2 flex-wrap">
+                    <Link :href="route('reports.sales-analysis', { period: 'today' })" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-card border border-border-subtle text-xs font-semibold text-text-primary shadow-xs hover:border-brand hover:text-brand transition-all">
+                        <Calendar :size="13" class="text-brand" />
+                        <span>Ripoti ya Leo</span>
+                    </Link>
+                    <Link :href="route('reports.sales-analysis', { period: 'this_week' })" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-card border border-border-subtle text-xs font-semibold text-text-primary shadow-xs hover:border-brand hover:text-brand transition-all">
+                        <Calendar :size="13" class="text-blue-500" />
+                        <span>Wiki Hii</span>
+                    </Link>
+                    <Link :href="route('reports.sales-analysis', { period: 'this_month' })" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-card border border-border-subtle text-xs font-semibold text-text-primary shadow-xs hover:border-brand hover:text-brand transition-all">
+                        <Calendar :size="13" class="text-emerald-500" />
+                        <span>Mwezi Huu</span>
+                    </Link>
+                    <Link :href="route('reports.sales-analysis', { period: 'this_year' })" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-card border border-border-subtle text-xs font-semibold text-text-primary shadow-xs hover:border-brand hover:text-brand transition-all">
+                        <Calendar :size="13" class="text-purple-500" />
+                        <span>Mwaka Huu</span>
+                    </Link>
+                </div>
+            </div>
+        </div>
 
         <!-- Report cards -->
         <div class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">

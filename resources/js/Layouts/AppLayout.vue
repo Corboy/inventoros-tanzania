@@ -41,6 +41,13 @@ import {
     Search,
     Menu,
     X,
+    LogOut,
+    Activity,
+    RotateCcw,
+    Webhook,
+    PanelLeft,
+    PanelLeftClose,
+    PanelLeftOpen,
 } from 'lucide-vue-next';
 
 import { usePermissions } from '@/composables/usePermissions';
@@ -56,6 +63,12 @@ const { hasPermission } = usePermissions();
 
 const mobileOpen = ref(false);
 const globalSearchRef = ref(null);
+const sidebarCollapsed = ref(localStorage.getItem('sidebar_collapsed') === 'true');
+
+const toggleDesktopSidebar = () => {
+    sidebarCollapsed.value = !sidebarCollapsed.value;
+    localStorage.setItem('sidebar_collapsed', sidebarCollapsed.value ? 'true' : 'false');
+};
 
 // Close mobile drawer on navigation
 onMounted(() => {
@@ -64,20 +77,29 @@ onMounted(() => {
     });
 });
 
-// Cmd/Ctrl-K opens global search anywhere
+// Cmd/Ctrl-K opens global search, Cmd/Ctrl-B toggles sidebar
 const handleHotkey = (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         globalSearchRef.value?.open();
+    }
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        toggleDesktopSidebar();
     }
 };
 onMounted(() => window.addEventListener('keydown', handleHotkey));
 
 const user = computed(() => page.props.auth?.user);
 const workspaceName = computed(() => page.props.auth?.organization?.name || 'Inventoros');
+const isManager = computed(() => user.value?.role === 'manager');
+
+const logout = () => {
+    router.post(route('logout'));
+};
 
 /**
- * Nav schema. Each section is { label, items: [{ icon, name, href, active, perm? }] }.
+ * Nav schema. Each section is { label, items: [{ icon, name, href, active, perm?, devOnly? }] }.
  * Render is data-driven so adding a section is one line.
  */
 const sections = computed(() => [
@@ -119,10 +141,14 @@ const sections = computed(() => [
     {
         label: t('nav.admin') || 'Admin',
         items: [
-            { icon: Users, name: t('nav.users'), href: route('users.index'), active: ['users.*'], perm: 'manage_users' },
-            { icon: ShieldCheck, name: t('nav.roles'), href: route('roles.index'), active: ['roles.*'], perm: 'manage_roles' },
-            { icon: Puzzle, name: t('nav.plugins'), href: route('plugins.index'), active: ['plugins.*'], perm: 'manage_plugins' },
-            { icon: Settings2, name: t('nav.settings'), href: route('settings.account.index'), active: ['settings.*', 'webhooks.*', 'account.*'] },
+            { icon: Users, name: t('nav.users') || 'Watumiaji', href: route('users.index'), active: ['users.*'], perm: 'view_users' },
+            { icon: ShieldCheck, name: t('nav.roles') || 'Nafasi (Roles)', href: route('roles.index'), active: ['roles.*'], perm: 'view_roles' },
+            { icon: Settings2, name: t('nav.settings') || 'Mipangilio', href: route('settings.account.index'), active: ['settings.*', 'account.*'] },
+            // Developer Options - Visible to Admin, Hidden for Manager
+            { icon: Puzzle, name: 'Plugins (Dev)', href: route('plugins.index'), active: ['plugins.*'], perm: 'manage_plugins', devOnly: true },
+            { icon: RotateCcw, name: 'System Updates (Dev)', href: route('admin.update.index'), active: ['admin.update.*'], perm: 'manage_organization', devOnly: true },
+            { icon: Activity, name: 'Activity Log (Dev)', href: route('activity-log.index'), active: ['activity-log.*'], perm: 'view_activity_log', devOnly: true },
+            { icon: Webhook, name: 'Webhooks (Dev)', href: route('webhooks.index'), active: ['webhooks.*'], perm: 'manage_organization', devOnly: true },
         ],
     },
 ]);
@@ -131,7 +157,12 @@ const visibleSections = computed(() =>
     sections.value
         .map((s) => ({
             ...s,
-            items: s.items.filter((i) => !i.perm || hasPermission(i.perm)),
+            items: s.items.filter((i) => {
+                if (i.devOnly && isManager.value) {
+                    return false;
+                }
+                return !i.perm || hasPermission(i.perm);
+            }),
         }))
         .filter((s) => s.items.length > 0)
 );
@@ -168,25 +199,35 @@ const isActive = (item) => item.active.some((pattern) => route().current(pattern
         <!-- Sidebar -->
         <aside
             :class="[
-                'fixed md:fixed inset-y-0 left-0 z-50 w-60 flex flex-col',
+                'fixed inset-y-0 left-0 z-50 w-60 flex flex-col',
                 'bg-surface-base border-r border-border-subtle',
-                'transform transition-transform duration-200',
-                mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
+                'transform transition-transform duration-200 ease-in-out',
+                mobileOpen ? 'translate-x-0' : '-translate-x-full',
+                sidebarCollapsed ? 'md:-translate-x-full' : 'md:translate-x-0',
                 'pt-12 md:pt-0',
             ]"
         >
-            <!-- Workspace badge -->
-            <div class="px-3 h-14 flex items-center border-b border-border-subtle shrink-0">
+            <!-- Workspace badge & Collapse button -->
+            <div class="px-3 h-14 flex items-center justify-between border-b border-border-subtle shrink-0">
                 <Link
                     :href="route('dashboard')"
-                    class="flex items-center gap-2.5 w-full px-2 py-1.5 rounded-md hover:bg-surface-overlay transition-colors ds-focus-ring"
+                    class="flex items-center gap-2.5 flex-1 min-w-0 px-2 py-1.5 rounded-md hover:bg-surface-overlay transition-colors ds-focus-ring"
                 >
                     <img src="/images/brand/inventoros_icon_transparent_512.png" alt="Inventoros" class="h-7 w-7 shrink-0" />
                     <span class="text-sm font-semibold tracking-tight truncate flex-1 text-left">
                         {{ workspaceName }}
                     </span>
-                    <PackageSearch :size="14" class="text-text-tertiary" />
+                    <PackageSearch :size="14" class="text-text-tertiary shrink-0" />
                 </Link>
+                <button
+                    @click="toggleDesktopSidebar"
+                    type="button"
+                    class="hidden md:flex p-1.5 rounded-md text-text-tertiary hover:text-text-primary hover:bg-surface-overlay transition-colors shrink-0 ml-1"
+                    title="Ficha Menyu (Ctrl+B)"
+                    aria-label="Ficha Menyu"
+                >
+                    <PanelLeftClose :size="16" />
+                </button>
             </div>
 
             <!-- Cmd-K search trigger -->
@@ -235,29 +276,57 @@ const isActive = (item) => item.active.some((pattern) => route().current(pattern
                 </div>
             </nav>
 
-            <!-- User pill -->
-            <div class="px-3 py-3 border-t border-border-subtle shrink-0">
-                <Link
-                    :href="route('settings.account.index')"
-                    data-testid="user-menu"
-                    class="flex items-center gap-2.5 w-full px-2 py-1.5 rounded-md hover:bg-surface-overlay transition-colors ds-focus-ring"
-                >
-                    <span class="h-7 w-7 rounded-full bg-surface-overlay grid place-items-center text-[11px] font-semibold text-text-primary shrink-0">
-                        {{ (user?.name || '?').charAt(0).toUpperCase() }}
-                    </span>
-                    <div class="min-w-0 flex-1 text-left">
-                        <p class="text-[13px] font-medium text-text-primary truncate">{{ user?.name }}</p>
-                        <p class="text-[11px] text-text-tertiary truncate">{{ user?.email }}</p>
-                    </div>
-                </Link>
+            <!-- User pill with Log Out -->
+            <div class="px-3 py-2.5 border-t border-border-subtle shrink-0">
+                <div class="flex items-center gap-1">
+                    <Link
+                        :href="route('settings.account.index')"
+                        data-testid="user-menu"
+                        class="flex items-center gap-2.5 flex-1 min-w-0 px-2 py-1.5 rounded-md hover:bg-surface-overlay transition-colors ds-focus-ring"
+                    >
+                        <span class="h-7 w-7 rounded-full bg-surface-overlay grid place-items-center text-[11px] font-semibold text-text-primary shrink-0">
+                            {{ (user?.name || '?').charAt(0).toUpperCase() }}
+                        </span>
+                        <div class="min-w-0 flex-1 text-left">
+                            <p class="text-[13px] font-medium text-text-primary truncate">{{ user?.name }}</p>
+                            <p class="text-[10px] text-text-tertiary truncate uppercase font-semibold">{{ user?.role || 'User' }}</p>
+                        </div>
+                    </Link>
+                    <button
+                        @click="logout"
+                        type="button"
+                        class="p-2 rounded-md text-text-tertiary hover:text-status-danger hover:bg-status-danger/10 transition-colors ds-focus-ring"
+                        title="Ondoka (Log Out)"
+                        aria-label="Ondoka (Log Out)"
+                    >
+                        <LogOut :size="16" />
+                    </button>
+                </div>
             </div>
         </aside>
 
         <!-- Main column -->
-        <div class="md:pl-60 pt-12 md:pt-0">
+        <div
+            :class="[
+                'transition-all duration-200 ease-in-out',
+                sidebarCollapsed ? 'md:pl-0' : 'md:pl-60',
+                'pt-12 md:pt-0',
+            ]"
+        >
             <!-- Top strip — sticky, thin -->
             <div class="sticky top-0 z-30 h-11 flex items-center justify-between gap-3 px-4 md:px-6 bg-surface-canvas/80 backdrop-blur border-b border-border-subtle">
-                <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-1 min-w-0">
+                    <!-- Sidebar Toggle Button for Desktop (when collapsed or open) -->
+                    <button
+                        @click="toggleDesktopSidebar"
+                        type="button"
+                        class="hidden md:inline-flex items-center justify-center p-1.5 -ml-1.5 rounded-md text-text-secondary hover:text-text-primary hover:bg-surface-overlay transition-colors ds-focus-ring"
+                        :title="sidebarCollapsed ? 'Onyesha Menyu (Ctrl+B)' : 'Ficha Menyu (Ctrl+B)'"
+                        aria-label="Toggle navigation"
+                    >
+                        <PanelLeft :size="16" />
+                    </button>
+
                     <slot name="header">
                         <span class="text-xs text-text-tertiary">{{ workspaceName }}</span>
                     </slot>
@@ -267,6 +336,15 @@ const isActive = (item) => item.active.some((pattern) => route().current(pattern
                     <WarehouseSwitcher />
                     <ThemeToggle />
                     <NotificationDropdown />
+                    <button
+                        @click="logout"
+                        type="button"
+                        class="ml-1 flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-text-secondary hover:text-status-danger hover:bg-surface-overlay rounded-md transition-colors"
+                        title="Ondoka / Log Out"
+                    >
+                        <LogOut :size="14" />
+                        <span class="hidden sm:inline">Ondoka</span>
+                    </button>
                 </div>
             </div>
 

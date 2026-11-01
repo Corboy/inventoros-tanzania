@@ -2,7 +2,8 @@
 import AppLayout from '@/Layouts/AppLayout.vue';
 import PageHeader from '@/Components/ui/PageHeader.vue';
 import Card from '@/Components/ui/Card.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { computed } from 'vue';
+import { Head, Link, usePage } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
 import {
     Building2,
@@ -10,11 +11,17 @@ import {
     Mail,
     Webhook,
     ChevronRight,
+    RotateCcw,
+    Activity,
+    Puzzle,
 } from 'lucide-vue-next';
 
 const { t } = useI18n();
+const page = usePage();
+const user = computed(() => page.props.auth?.user);
+const isManager = computed(() => user.value?.role === 'manager');
 
-const settingsSections = [
+const allSections = [
     {
         href: route('settings.organization.index'),
         icon: Building2,
@@ -36,10 +43,41 @@ const settingsSections = [
     {
         href: route('webhooks.index'),
         icon: Webhook,
-        title: 'Webhooks',
+        title: 'Webhooks (Dev)',
         description: 'Connect external services and deliver real-time event notifications.',
+        devOnly: true,
+    },
+    {
+        href: route('admin.update.index'),
+        icon: RotateCcw,
+        title: 'System Updates & Backups (Dev)',
+        description: 'Check for software updates, perform backups and system restorations.',
+        devOnly: true,
+    },
+    {
+        href: route('activity-log.index'),
+        icon: Activity,
+        title: 'Activity & Audit Log (Dev)',
+        description: 'Review system events, logins, stock movements and user actions.',
+        devOnly: true,
+    },
+    {
+        href: route('plugins.index'),
+        icon: Puzzle,
+        title: 'Plugins & Extensions (Dev)',
+        description: 'Manage developer modules, extensions, and integration hooks.',
+        devOnly: true,
     },
 ];
+
+const settingsSections = computed(() =>
+    allSections.filter((section) => {
+        if (section.devOnly && isManager.value) {
+            return false;
+        }
+        return true;
+    })
+);
 </script>
 
 <template>

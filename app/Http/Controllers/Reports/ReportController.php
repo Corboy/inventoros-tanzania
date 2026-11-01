@@ -152,64 +152,151 @@ class ReportController extends Controller
     }
 
     /**
-     * Sales Analysis Report.
+     * Sales Analysis & Periodic Reporting.
+     * Supports Day, Week, Month, Year, and Custom ranges with profit and payment insights.
      *
      * @param  Request  $request  The incoming HTTP request
      */
-    public function salesAnalysis(Request $request): Response
+    public function salesAnalysis(Request $request)
     {
         $organizationId = $request->user()->organization_id;
 
-        // Date filters — pass through as boundary timestamps rather than
-        // using whereDate so the order_date index can serve the predicate.
-        $dateFrom = $request->date_from ?? now()->subDays(30)->format('Y-m-d');
-        $dateTo = $request->date_to ?? now()->format('Y-m-d');
-        $fromTimestamp = $dateFrom.' 00:00:00';
-        $toTimestamp = $dateTo.' 23:59:59';
+        $period = (string) ($request->period ?? ($request->hasAny(['date_from', 'date_to']) ? 'custom' : 'last_30_days'));
+        $now = now();
 
-        // Each aggregate is its own SQL round-trip — previously the
-        // controller hydrated every Order + nested items.product for the
-        // window into memory and aggregated in PHP, which OOMs on large
-        // tenants and large windows.
+        switch ($period) {
+            case 'today':
+                $dateFrom = $now->copy()->startOfDay()->format('Y-m-d');
+                $dateTo = $now->copy()->endOfDay()->format('Y-m-d');
+                $granularity = 'hour';
+                $periodLabel = 'Leo (' . $now->translatedFormat('d M Y') . ')';
+                break;
+            case 'yesterday':
+                $yesterday = $now->copy()->subDay();
+                $dateFrom = $yesterday->copy()->startOfDay()->format('Y-m-d');
+                $dateTo = $yesterday->copy()->endOfDay()->format('Y-m-d');
+                $granularity = 'hour';
+                $periodLabel = 'Jana (' . $yesterday->translatedFormat('d M Y') . ')';
+                break;
+            case 'this_week':
+                $dateFrom = $now->copy()->startOfWeek()->format('Y-m-d');
+                $dateTo = $now->copy()->endOfWeek()->format('Y-m-d');
+                $granularity = 'day';
+                $periodLabel = 'Wiki Hii';
+                break;
+            case 'last_week':
+                $lastWeek = $now->copy()->subWeek();
+                $dateFrom = $lastWeek->copy()->startOfWeek()->format('Y-m-d');
+                $dateTo = $lastWeek->copy()->endOfWeek()->format('Y-m-d');
+                $granularity = 'day';
+                $periodLabel = 'Wiki Iliyopita';
+                break;
+            case 'last_7_days':
+                $dateFrom = $now->copy()->subDays(6)->format('Y-m-d');
+                $dateTo = $now->copy()->format('Y-m-d');
+                $granularity = 'day';
+                $periodLabel = 'Siku 7 Zilizopita';
+                break;
+            case 'this_month':
+                $dateFrom = $now->copy()->startOfMonth()->format('Y-m-d');
+                $dateTo = $now->copy()->endOfMonth()->format('Y-m-d');
+                $granularity = 'day';
+                $periodLabel = 'Mwezi Huu (' . $now->translatedFormat('F Y') . ')';
+                break;
+            case 'last_month':
+                $lastMonth = $now->copy()->subMonth();
+                $dateFrom = $lastMonth->copy()->startOfMonth()->format('Y-m-d');
+                $dateTo = $lastMonth->copy()->endOfMonth()->format('Y-m-d');
+                $granularity = 'day';
+                $periodLabel = 'Mwezi Uliopita (' . $lastMonth->translatedFormat('F Y') . ')';
+                break;
+            case 'this_year':
+                $dateFrom = $now->copy()->startOfYear()->format('Y-m-d');
+                $dateTo = $now->copy()->endOfYear()->format('Y-m-d');
+                $granularity = 'month';
+                $periodLabel = 'Mwaka Huu (' . $now->format('Y') . ')';
+                break;
+            case 'last_year':
+                $lastYear = $now->copy()->subYear();
+                $dateFrom = $lastYear->copy()->startOfYear()->format('Y-m-d');
+                $dateTo = $lastYear->copy()->endOfYear()->format('Y-m-d');
+                $granularity = 'month';
+                $periodLabel = 'Mwaka Uliopita (' . $lastYear->format('Y') . ')';
+                break;
+            case 'custom':
+            default:
+                $dateFrom = $request->date_from ?? $now->copy()->subDays(30)->format('Y-m-d');
+                $dateTo = $request->date_to ?? $now->copy()->format('Y-m-d');
+                $daysDiff = \Carbon\Carbon::parse($dateFrom)->diffInDays(\Carbon\Carbon::parse($dateTo));
+                if ($daysDiff <= 1) {
+                    $granularity = 'hour';
+                } elseif ($daysDiff <= 62) {
+                    $granularity = 'day';
+                } else {
+                    $granularity = 'month';
+                }
+                $periodLabel = 'Kipindi Maalum (' . $dateFrom . ' hadi ' . $dateTo . ')';
+                break;
+        }
 
-        // Summary
-        $summary = Order::forOrganization($organizationId)
-            ->whereBetween('order_date', [$fromTimestamp, $toTimestamp])
+        $fromTimestamp = $dateFrom . ' 00:00:00';
+        $toTimestamp = $dateTo . ' 23:59:59';
+
+        // Orders summary in window
+        $ordersQuery = Order::forOrganization($organizationId)
+            ->whereBetween('order_date', [$fromTimestamp, $toTimestamp]);
+
+        $summaryRow = (clone $ordersQuery)
             ->selectRaw('COUNT(*) as total_orders, COALESCE(SUM(total), 0) as total_revenue')
             ->first();
 
-        $totalOrders = (int) $summary->total_orders;
-        $totalRevenue = (float) $summary->total_revenue;
+        $totalOrders = (int) ($summaryRow->total_orders ?? 0);
+        $totalRevenue = (float) ($summaryRow->total_revenue ?? 0);
 
-        $totalItemsSold = (int) OrderItem::query()
+        // Calculate Cost of Goods Sold (COGS) and Items Sold
+        $itemsAgg = OrderItem::query()
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
+            ->leftJoin('products', 'products.id', '=', 'order_items.product_id')
             ->where('orders.organization_id', $organizationId)
             ->whereBetween('orders.order_date', [$fromTimestamp, $toTimestamp])
-            ->sum('order_items.quantity');
+            ->selectRaw('
+                COALESCE(SUM(order_items.quantity), 0) as total_items_sold,
+                COALESCE(SUM(order_items.quantity * COALESCE(products.purchase_price, 0)), 0) as total_cost
+            ')
+            ->first();
+
+        $totalItemsSold = (int) ($itemsAgg->total_items_sold ?? 0);
+        $totalCost = (float) ($itemsAgg->total_cost ?? 0);
+        $grossProfit = max(0, $totalRevenue - $totalCost);
+        $profitMargin = $totalRevenue > 0 ? round(($grossProfit / $totalRevenue) * 100, 1) : 0.0;
+        $avgOrderValue = $totalOrders > 0 ? round($totalRevenue / $totalOrders, 2) : 0.0;
 
         $summary = [
             'total_orders' => $totalOrders,
             'total_revenue' => $totalRevenue,
             'total_items_sold' => $totalItemsSold,
-            'average_order_value' => $totalOrders > 0 ? $totalRevenue / $totalOrders : 0,
+            'average_order_value' => $avgOrderValue,
+            'total_cost' => $totalCost,
+            'gross_profit' => $grossProfit,
+            'profit_margin' => $profitMargin,
         ];
 
         // Sales by status
-        $byStatus = Order::forOrganization($organizationId)
-            ->whereBetween('order_date', [$fromTimestamp, $toTimestamp])
+        $byStatus = (clone $ordersQuery)
             ->selectRaw('status, COUNT(*) as count, COALESCE(SUM(total), 0) as revenue')
             ->groupBy('status')
             ->get()
             ->map(fn ($row) => [
-                'status' => $row->status,
+                'status' => $row->status instanceof \BackedEnum ? $row->status->value : (string) ($row->status ?? ''),
                 'count' => (int) $row->count,
                 'revenue' => (float) $row->revenue,
             ])
             ->values();
 
-        // Top selling products (by revenue, top 10).
+        // Top selling products with profit margin
         $topProducts = OrderItem::query()
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
+            ->leftJoin('products', 'products.id', '=', 'order_items.product_id')
             ->where('orders.organization_id', $organizationId)
             ->whereBetween('orders.order_date', [$fromTimestamp, $toTimestamp])
             ->selectRaw('
@@ -217,7 +304,8 @@ class ReportController extends Controller
                 order_items.product_name,
                 order_items.sku,
                 SUM(order_items.quantity) as quantity_sold,
-                SUM(order_items.total) as revenue
+                SUM(order_items.total) as revenue,
+                SUM(order_items.quantity * COALESCE(products.purchase_price, 0)) as cost
             ')
             ->groupBy('order_items.product_id', 'order_items.product_name', 'order_items.sku')
             ->orderByDesc('revenue')
@@ -228,29 +316,158 @@ class ReportController extends Controller
                 'sku' => $row->sku,
                 'quantity_sold' => (int) $row->quantity_sold,
                 'revenue' => (float) $row->revenue,
+                'cost' => (float) $row->cost,
+                'profit' => max(0, (float) $row->revenue - (float) $row->cost),
             ])
             ->values();
 
-        // Daily sales trend
-        $dailySales = Order::forOrganization($organizationId)
-            ->whereBetween('order_date', [$fromTimestamp, $toTimestamp])
-            ->selectRaw('DATE(order_date) as date, COUNT(*) as orders, COALESCE(SUM(total), 0) as revenue')
-            ->groupBy('date')
-            ->orderBy('date')
+        // Payment methods breakdown (Cash, Mobile Money, Bank)
+        $ordersForMeta = (clone $ordersQuery)->select('id', 'total', 'metadata')->get();
+        $paymentMap = [];
+        foreach ($ordersForMeta as $ord) {
+            $meta = is_array($ord->metadata) ? $ord->metadata : [];
+            $method = (string) ($meta['payment_method'] ?? 'cash');
+            if (! isset($paymentMap[$method])) {
+                $paymentMap[$method] = [
+                    'method' => $method,
+                    'count' => 0,
+                    'revenue' => 0.0,
+                ];
+            }
+            $paymentMap[$method]['count']++;
+            $paymentMap[$method]['revenue'] += (float) $ord->total;
+        }
+        $paymentMethods = array_values($paymentMap);
+        usort($paymentMethods, fn ($a, $b) => $b['revenue'] <=> $a['revenue']);
+
+        // Sales by Cashier / Staff
+        $salesByUser = Order::query()
+            ->where('orders.organization_id', $organizationId)
+            ->whereNull('orders.deleted_at')
+            ->whereBetween('orders.order_date', [$fromTimestamp, $toTimestamp])
+            ->leftJoin('users', 'users.id', '=', 'orders.created_by')
+            ->selectRaw('COALESCE(users.name, "Msimamizi / Kaunta") as user_name, COUNT(orders.id) as orders_count, COALESCE(SUM(orders.total), 0) as total_revenue')
+            ->groupBy('users.id', 'users.name')
+            ->orderByDesc('total_revenue')
             ->get()
             ->map(fn ($row) => [
-                'date' => $row->date,
-                'orders' => (int) $row->orders,
-                'revenue' => (float) $row->revenue,
+                'user_name' => (string) $row->user_name,
+                'orders_count' => (int) $row->orders_count,
+                'total_revenue' => (float) $row->total_revenue,
             ])
             ->values();
+
+        // Trend Breakdown (Hour, Day, or Month)
+        $ordersForTrend = (clone $ordersQuery)->select('order_date', 'total')->get();
+        $trendBuckets = [];
+
+        if ($granularity === 'hour') {
+            for ($h = 6; $h < 24; $h++) {
+                $hKey = sprintf('%02d:00', $h);
+                $trendBuckets[$hKey] = ['date' => $hKey, 'orders' => 0, 'revenue' => 0.0];
+            }
+            foreach ($ordersForTrend as $ord) {
+                $hKey = \Carbon\Carbon::parse($ord->order_date)->format('H:00');
+                if (! isset($trendBuckets[$hKey])) {
+                    $trendBuckets[$hKey] = ['date' => $hKey, 'orders' => 0, 'revenue' => 0.0];
+                }
+                $trendBuckets[$hKey]['orders']++;
+                $trendBuckets[$hKey]['revenue'] += (float) $ord->total;
+            }
+            ksort($trendBuckets);
+        } elseif ($granularity === 'month') {
+            foreach ($ordersForTrend as $ord) {
+                $mKey = \Carbon\Carbon::parse($ord->order_date)->format('Y-m');
+                if (! isset($trendBuckets[$mKey])) {
+                    $trendBuckets[$mKey] = ['date' => $mKey, 'orders' => 0, 'revenue' => 0.0];
+                }
+                $trendBuckets[$mKey]['orders']++;
+                $trendBuckets[$mKey]['revenue'] += (float) $ord->total;
+            }
+            ksort($trendBuckets);
+        } else {
+            foreach ($ordersForTrend as $ord) {
+                $dKey = \Carbon\Carbon::parse($ord->order_date)->format('Y-m-d');
+                if (! isset($trendBuckets[$dKey])) {
+                    $trendBuckets[$dKey] = ['date' => $dKey, 'orders' => 0, 'revenue' => 0.0];
+                }
+                $trendBuckets[$dKey]['orders']++;
+                $trendBuckets[$dKey]['revenue'] += (float) $ord->total;
+            }
+            ksort($trendBuckets);
+        }
+
+        $dailySales = array_values($trendBuckets);
+
+        // CSV Export Handler
+        if ($request->export === 'csv') {
+            $filename = sprintf('ripoti-ya-mauzo-%s-%s.csv', $period, date('Ymd-His'));
+            $headers = [
+                'Content-Type' => 'text/csv; charset=UTF-8',
+                'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            ];
+
+            return response()->streamDownload(function () use ($periodLabel, $summary, $dailySales, $topProducts, $paymentMethods) {
+                $handle = fopen('php://output', 'w');
+                // UTF-8 BOM for Excel Swahili compatibility
+                fputs($handle, "\xEF\xBB\xBF");
+
+                fputcsv($handle, ['INVENTOROS TANZANIA - RIPOTI YA MAUZO NA FAIDA']);
+                fputcsv($handle, ['Kipindi:', $periodLabel]);
+                fputcsv($handle, ['Tarehe Iliyozalishwa:', now()->toDateTimeString()]);
+                fputcsv($handle, []);
+
+                fputcsv($handle, ['MUHTASARI WA KIFEDHA']);
+                fputcsv($handle, ['Jumla ya Mauzo (TSh)', number_format($summary['total_revenue'], 2)]);
+                fputcsv($handle, ['Gharama za Ununuzi (TSh)', number_format($summary['total_cost'], 2)]);
+                fputcsv($handle, ['Faida Ghafi (TSh)', number_format($summary['gross_profit'], 2)]);
+                fputcsv($handle, ['Asilimia ya Faida', $summary['profit_margin'].'%']);
+                fputcsv($handle, ['Idadi ya Mauzo/Oda', $summary['total_orders']]);
+                fputcsv($handle, ['Jumla ya Bidhaa Zilizouzwa', $summary['total_items_sold']]);
+                fputcsv($handle, ['Wastani kwa Oda (TSh)', number_format($summary['average_order_value'], 2)]);
+                fputcsv($handle, []);
+
+                fputcsv($handle, ['MCHANGANUO KWA WAKATI']);
+                fputcsv($handle, ['Kipindi / Tarehe', 'Idadi ya Mauzo', 'Mapato (TSh)']);
+                foreach ($dailySales as $row) {
+                    fputcsv($handle, [$row['date'], $row['orders'], number_format($row['revenue'], 2)]);
+                }
+                fputcsv($handle, []);
+
+                fputcsv($handle, ['BIDHAA ZINAZOTEMBEA ZAIDI']);
+                fputcsv($handle, ['Jina la Bidhaa', 'SKU', 'Vipande Vilivyouzwa', 'Mapato (TSh)', 'Gharama (TSh)', 'Faida (TSh)']);
+                foreach ($topProducts as $prod) {
+                    fputcsv($handle, [
+                        $prod['product_name'],
+                        $prod['sku'],
+                        $prod['quantity_sold'],
+                        number_format($prod['revenue'], 2),
+                        number_format($prod['cost'], 2),
+                        number_format($prod['profit'], 2),
+                    ]);
+                }
+                fputcsv($handle, []);
+
+                fputcsv($handle, ['MCHANGANUO WA NJIA ZA MALIPO']);
+                fputcsv($handle, ['Njia ya Malipo', 'Idadi ya Miamala', 'Kiasi (TSh)']);
+                foreach ($paymentMethods as $pm) {
+                    fputcsv($handle, [ucfirst($pm['method']), $pm['count'], number_format($pm['revenue'], 2)]);
+                }
+                fclose($handle);
+            }, $filename, $headers);
+        }
 
         return Inertia::render('Reports/SalesAnalysis', [
             'summary' => $summary,
             'byStatus' => $byStatus,
             'topProducts' => $topProducts,
             'dailySales' => $dailySales,
+            'paymentMethods' => $paymentMethods,
+            'salesByUser' => $salesByUser,
             'filters' => [
+                'period' => $period,
+                'period_label' => $periodLabel,
+                'granularity' => $granularity,
                 'date_from' => $dateFrom,
                 'date_to' => $dateTo,
             ],

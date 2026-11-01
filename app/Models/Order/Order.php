@@ -140,6 +140,21 @@ class Order extends Model
         return $this->belongsTo(Customer::class);
     }
 
+    public function getCashTenderedAttribute(): float
+    {
+        return (float) ($this->metadata['cash_tendered'] ?? 0);
+    }
+
+    public function getChangeDueAttribute(): float
+    {
+        return (float) ($this->metadata['change_due'] ?? 0);
+    }
+
+    public function getPaymentMethodAttribute(): ?string
+    {
+        return $this->metadata['payment_method'] ?? null;
+    }
+
     public function warehouse(): BelongsTo
     {
         return $this->belongsTo(Warehouse::class);

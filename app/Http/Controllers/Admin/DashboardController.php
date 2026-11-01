@@ -60,10 +60,22 @@ class DashboardController extends Controller
             ', ['pending', $monthStart, $monthEnd])
             ->first();
 
+        $lowStockCount = Product::forOrganization($orgId)->lowStock()->count();
+        $outOfStockCount = Product::forOrganization($orgId)->outOfStock()->count();
+        $stagnantCount = Product::forOrganization($orgId)->stagnant(30)->count();
+
+        $stockAlerts = [
+            'low_stock_count' => $lowStockCount,
+            'out_of_stock_count' => $outOfStockCount,
+            'stagnant_count' => $stagnantCount,
+        ];
+
         $stats = [
             'totalProducts' => (int) ($productAgg->total_count ?? 0),
             'totalValue' => (float) ($productAgg->total_value ?? 0),
-            'lowStockProducts' => (int) ($productAgg->low_stock_count ?? 0),
+            'lowStockProducts' => $lowStockCount,
+            'outOfStockProducts' => $outOfStockCount,
+            'stagnantProducts' => $stagnantCount,
             'categories' => ProductCategory::where('organization_id', $orgId)->count(),
             'locations' => ProductLocation::where('organization_id', $orgId)->count(),
             'totalOrders' => (int) ($orderAgg->total_count ?? 0),
@@ -86,9 +98,25 @@ class DashboardController extends Controller
 
         // Get low stock products
         $lowStockProducts = Product::where('organization_id', $user->organization_id)
-            ->whereColumn('stock', '<=', 'min_stock')
+            ->lowStock()
             ->with(['category', 'location'])
             ->orderBy('stock', 'asc')
+            ->limit(5)
+            ->get();
+
+        // Get out of stock products
+        $outOfStockProducts = Product::where('organization_id', $user->organization_id)
+            ->outOfStock()
+            ->with(['category', 'location'])
+            ->latest()
+            ->limit(5)
+            ->get();
+
+        // Get stagnant products
+        $stagnantProducts = Product::where('organization_id', $user->organization_id)
+            ->stagnant(30)
+            ->with(['category', 'location'])
+            ->orderBy('stock', 'desc')
             ->limit(5)
             ->get();
 
@@ -192,8 +220,11 @@ class DashboardController extends Controller
 
         $data = [
             'stats' => $stats,
+            'stockAlerts' => $stockAlerts,
             'recentProducts' => $recentProducts,
             'lowStockProducts' => $lowStockProducts,
+            'outOfStockProducts' => $outOfStockProducts,
+            'stagnantProducts' => $stagnantProducts,
             'reorderSuggestions' => $reorderSuggestions,
             'recentOrders' => $recentOrders,
             'stockByCategory' => $stockByCategory,

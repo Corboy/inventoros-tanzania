@@ -78,6 +78,15 @@ final class OrderService
         if (!empty($data['customer_tin'])) {
             $metadata['customer_tin'] = $data['customer_tin'];
         }
+        if (!empty($data['payment_method'])) {
+            $metadata['payment_method'] = $data['payment_method'];
+        }
+        if (isset($data['cash_tendered']) && $data['cash_tendered'] !== null) {
+            $metadata['cash_tendered'] = (float) $data['cash_tendered'];
+        }
+        if (isset($data['change_due']) && $data['change_due'] !== null) {
+            $metadata['change_due'] = (float) $data['change_due'];
+        }
         if (!empty($metadata)) {
             $data['metadata'] = $metadata;
         }

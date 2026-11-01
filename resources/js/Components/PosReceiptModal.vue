@@ -146,6 +146,14 @@ const formatDate = (dateStr) => {
                             <span>JUMLA KUU (TOTAL):</span>
                             <span class="text-base">{{ formatCurrency(order.total, order.currency) }}</span>
                         </div>
+                        <div v-if="order?.metadata?.cash_tendered" class="flex justify-between text-[11px] pt-1 border-t border-dashed border-gray-400">
+                            <span>Pesa Iliyopokelewa:</span>
+                            <span class="font-semibold">{{ formatCurrency(order.metadata.cash_tendered, order.currency) }}</span>
+                        </div>
+                        <div v-if="order?.metadata?.change_due !== undefined && order?.metadata?.change_due !== null" class="flex justify-between text-[11px]">
+                            <span>Chenji (Change Due):</span>
+                            <span class="font-bold">{{ formatCurrency(order.metadata.change_due, order.currency) }}</span>
+                        </div>
                     </div>
 
                     <div class="text-center pt-3 space-y-1 text-[11px]">

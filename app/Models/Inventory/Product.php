@@ -89,6 +89,8 @@ class Product extends Model
         'name',
         'description',
         'price',
+        'wholesale_price',
+        'unit',
         'selling_price',
         'currency',
         'price_in_currencies',
@@ -227,6 +229,16 @@ class Product extends Model
     public function serials(): HasMany
     {
         return $this->hasMany(ProductSerial::class)->latest();
+    }
+
+    /**
+     * Get order items associated with this product.
+     *
+     * @return HasMany<\App\Models\Order\OrderItem, $this>
+     */
+    public function orderItems(): HasMany
+    {
+        return $this->hasMany(\App\Models\Order\OrderItem::class);
     }
 
     /**

@@ -26,12 +26,14 @@ const props = defineProps({
     filters: Object,
     categories: Array,
     locations: Array,
+    stockCounts: Object,
     pluginComponents: Object,
 });
 
 const search = ref(props.filters?.search || '');
 const category = ref(props.filters?.category || '');
 const location = ref(props.filters?.location || '');
+const stockStatus = ref(props.filters?.stock_status || '');
 
 // Bulk selection
 const selectedProducts = ref([]);
@@ -115,13 +117,20 @@ const searchProducts = () => {
         search: search.value,
         category: category.value,
         location: location.value,
+        stock_status: stockStatus.value,
     }, { preserveState: true, preserveScroll: true });
+};
+
+const filterByStatus = (status) => {
+    stockStatus.value = status;
+    searchProducts();
 };
 
 const clearFilters = () => {
     search.value = '';
     category.value = '';
     location.value = '';
+    stockStatus.value = '';
     searchProducts();
 };
 
@@ -218,8 +227,8 @@ const thClass =
         <!-- Filters -->
         <Card class="mt-6">
             <form @submit.prevent="searchProducts" class="space-y-4">
-                <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
-                    <div class="md:col-span-2">
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+                    <div class="sm:col-span-2">
                         <label for="search" class="mb-1 block text-xs font-medium text-text-secondary">{{ t('products.searchProducts') }}</label>
                         <div class="relative">
                             <Search :size="15" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
@@ -241,8 +250,64 @@ const thClass =
                             <option v-for="loc in locations" :key="loc.id" :value="loc.id">{{ loc.name }}</option>
                         </select>
                     </div>
+                    <div>
+                        <label for="stock_status" class="mb-1 block text-xs font-medium text-text-secondary">Hali ya Akiba (Stock)</label>
+                        <select id="stock_status" v-model="stockStatus" :class="selectClass" @change="searchProducts">
+                            <option value="">Hali Zote (All)</option>
+                            <option value="low_stock">⚠️ Zilizobaki Kidogo</option>
+                            <option value="out_of_stock">❌ Zilizokwisha (Out of Stock)</option>
+                            <option value="stagnant">⏳ Zilizokaa Muda Mrefu</option>
+                            <option value="in_stock">✅ Za Kutosha (In Stock)</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="flex items-center gap-2">
+
+                <!-- Quick Filter Chips (Hali za Bidhaa) -->
+                <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-border-subtle/60">
+                    <span class="text-xs text-text-tertiary font-medium mr-1">Vichujio vya Haraka:</span>
+                    <button
+                        type="button"
+                        @click="filterByStatus('')"
+                        :class="[
+                            'px-2.5 py-1 rounded text-xs font-medium transition-colors',
+                            !stockStatus ? 'bg-brand text-white font-semibold shadow-xs' : 'bg-surface-canvas text-text-secondary hover:bg-surface-overlay border border-border-subtle'
+                        ]"
+                    >
+                        Zote ({{ stockCounts?.total ?? products.total ?? 0 }})
+                    </button>
+                    <button
+                        type="button"
+                        @click="filterByStatus('low_stock')"
+                        :class="[
+                            'px-2.5 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1.5',
+                            stockStatus === 'low_stock' ? 'bg-status-warning text-black font-bold shadow-xs' : 'bg-surface-canvas text-status-warning hover:bg-status-warning/10 border border-status-warning/40'
+                        ]"
+                    >
+                        ⚠️ Zilizobaki Kidogo ({{ stockCounts?.low_stock ?? 0 }})
+                    </button>
+                    <button
+                        type="button"
+                        @click="filterByStatus('out_of_stock')"
+                        :class="[
+                            'px-2.5 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1.5',
+                            stockStatus === 'out_of_stock' ? 'bg-status-danger text-white font-bold shadow-xs' : 'bg-surface-canvas text-status-danger hover:bg-status-danger/10 border border-status-danger/40'
+                        ]"
+                    >
+                        ❌ Zilizokwisha ({{ stockCounts?.out_of_stock ?? 0 }})
+                    </button>
+                    <button
+                        type="button"
+                        @click="filterByStatus('stagnant')"
+                        :class="[
+                            'px-2.5 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1.5',
+                            stockStatus === 'stagnant' ? 'bg-purple-600 text-white font-bold shadow-xs' : 'bg-surface-canvas text-purple-600 hover:bg-purple-50 border border-purple-300 dark:border-purple-800'
+                        ]"
+                    >
+                        ⏳ Zilizokaa Muda Mrefu ({{ stockCounts?.stagnant ?? 0 }})
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-2 pt-1">
                     <Button type="submit" variant="default" size="sm"><Search :size="14" />{{ t('common.search') }}</Button>
                     <Button type="button" variant="secondary" size="sm" @click="clearFilters">{{ t('common.clearFilters') }}</Button>
                 </div>
@@ -308,11 +373,24 @@ const thClass =
                         <td class="px-4 py-3"><Badge variant="brand" size="sm">{{ product.category?.name || t('common.na') }}</Badge></td>
                         <td class="px-4 py-3"><Badge variant="neutral" size="sm">{{ product.location?.name || t('common.na') }}</Badge></td>
                         <td class="px-4 py-3">
-                            <div class="flex items-center gap-1">
-                                <span :class="['font-medium tabular-nums', isLowStock(product) ? 'text-status-danger' : 'text-text-primary']">{{ product.stock }}</span>
-                                <AlertTriangle v-if="isLowStock(product)" :size="14" class="text-status-danger" />
+                            <div class="flex items-center gap-1.5 mb-1">
+                                <span :class="['font-bold tabular-nums text-sm', product.stock <= 0 ? 'text-status-danger' : (isLowStock(product) ? 'text-status-warning' : 'text-text-primary')]">
+                                    {{ product.stock }}
+                                </span>
+                                <span class="text-[11px] text-text-tertiary">{{ product.unit || 'pcs' }}</span>
                             </div>
-                            <p class="text-[11px] text-text-tertiary">Min: {{ product.min_stock }}</p>
+                            <div class="flex flex-col gap-0.5 items-start">
+                                <Badge v-if="product.stock <= 0" variant="danger" size="sm">
+                                    ❌ Imeisha
+                                </Badge>
+                                <Badge v-else-if="isLowStock(product)" variant="warning" size="sm">
+                                    ⚠️ Imebaki Kidogo
+                                </Badge>
+                                <Badge v-else variant="success" size="sm">
+                                    ✅ Inatosha
+                                </Badge>
+                                <span class="text-[10px] text-text-tertiary">Kiwango cha Chini: {{ product.min_stock }}</span>
+                            </div>
                         </td>
                         <td class="px-4 py-3 font-medium tabular-nums text-text-primary">{{ formatCurrency(product.price) }}</td>
                         <td class="px-4 py-3">

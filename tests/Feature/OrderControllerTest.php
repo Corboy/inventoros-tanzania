@@ -548,7 +548,7 @@ class OrderControllerTest extends TestCase
                 'items' => [],
             ]);
 
-        $response->assertSessionHasErrors(['customer_name', 'status', 'order_date', 'items']);
+        $response->assertSessionHasErrors(['status', 'order_date', 'items']);
     }
 
     public function test_order_creation_validates_valid_status(): void

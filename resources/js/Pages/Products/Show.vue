@@ -16,6 +16,7 @@ import { useI18n } from 'vue-i18n';
 import axios from 'axios';
 import ImageGallery from '@/Components/ImageGallery.vue';
 import { usePermissions } from '@/composables/usePermissions';
+import { useCurrency } from '@/composables/useCurrency';
 import {
     Boxes,
     DollarSign,
@@ -44,6 +45,10 @@ const props = defineProps({
     activities: Array,
     activityMetrics: Object,
     stockMovements: Array,
+    locationBreakdown: {
+        type: Array,
+        default: () => [],
+    },
     pluginComponents: Object,
 });
 
@@ -52,12 +57,12 @@ const barcodeLoading = ref(false);
 
 const getStockStatus = () => {
     if (props.product.stock <= 0) {
-        return { text: t('products.show.outOfStock'), variant: 'danger' };
+        return { text: '❌ Imeisha (Out of Stock)', variant: 'danger' };
     }
     if (props.product.stock <= props.product.min_stock) {
-        return { text: t('products.show.lowStock'), variant: 'warning' };
+        return { text: '⚠️ Imebaki Kidogo (Low Stock)', variant: 'warning' };
     }
-    return { text: t('products.show.inStock'), variant: 'success' };
+    return { text: '✅ Inatosha (In Stock)', variant: 'success' };
 };
 
 const stockStatus = getStockStatus();
@@ -123,8 +128,8 @@ const productImages = computed(() => {
 const variants = ref(props.product.variants || []);
 
 const getCurrencySymbol = () => {
-    const symbols = { USD: '$', EUR: '€', GBP: '£', JPY: '¥' };
-    return symbols[props.product.currency] || '$';
+    const symbols = { USD: '$', EUR: '€', GBP: '£', JPY: '¥', TZS: 'TSh' };
+    return symbols[props.product.currency] || 'TSh';
 };
 
 const onVariantUpdated = (updatedVariant) => {
@@ -346,7 +351,7 @@ const fieldInput = 'h-9 w-full rounded-md border border-border-subtle bg-surface
                                     {{ product.location?.name || t('products.show.noLocation') }}
                                 </p>
                             </div>
-                            <div v-if="locationBreakdown.length" class="sm:col-span-2">
+                            <div v-if="locationBreakdown && locationBreakdown.length > 0" class="sm:col-span-2">
                                 <h4 class="mb-1 text-sm font-medium text-text-tertiary">{{ t('products.show.stockByLocation') }}</h4>
                                 <ul class="divide-y divide-border-subtle rounded-md border border-border-subtle">
                                     <li
@@ -370,9 +375,9 @@ const fieldInput = 'h-9 w-full rounded-md border border-border-subtle bg-surface
                 <Card :padded="false">
                     <div class="px-5 pt-5"><h3 class="text-sm font-semibold text-text-primary">{{ t('products.show.pricingInfo') }}</h3></div>
                     <div class="p-5">
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
                             <div>
-                                <h4 class="mb-1 text-sm font-medium text-text-tertiary">{{ t('products.show.sellingPrice') }}</h4>
+                                <h4 class="mb-1 text-sm font-medium text-text-tertiary">{{ t('products.show.sellingPrice') }} (Rejareja)</h4>
                                 <p class="text-2xl font-bold tabular-nums text-text-primary">
                                     {{ formatCurrency(product.price) }}
                                 </p>
@@ -380,8 +385,17 @@ const fieldInput = 'h-9 w-full rounded-md border border-border-subtle bg-surface
                                     Currency: {{ product.currency }}
                                 </p>
                             </div>
+                            <div v-if="product.wholesale_price">
+                                <h4 class="mb-1 text-sm font-medium text-text-tertiary">🏷️ Bei ya Jumla (Wholesale)</h4>
+                                <p class="text-2xl font-bold tabular-nums text-brand">
+                                    {{ formatCurrency(product.wholesale_price) }}
+                                </p>
+                                <p class="mt-1 text-xs text-text-tertiary">
+                                    Bei ya wateja wa jumla
+                                </p>
+                            </div>
                             <div v-if="product.purchase_price">
-                                <h4 class="mb-1 text-sm font-medium text-text-tertiary">{{ t('products.show.purchasePrice') }}</h4>
+                                <h4 class="mb-1 text-sm font-medium text-text-tertiary">{{ t('products.show.purchasePrice') }} (Kununulia)</h4>
                                 <p class="text-2xl font-bold tabular-nums text-text-primary">
                                     {{ formatCurrency(product.purchase_price) }}
                                 </p>

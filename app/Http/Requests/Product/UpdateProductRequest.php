@@ -34,6 +34,8 @@ final class UpdateProductRequest extends FormRequest
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
+            'wholesale_price' => 'nullable|numeric|min:0',
+            'unit' => 'nullable|string|max:50',
             'purchase_price' => 'nullable|numeric|min:0',
             'stock' => 'required|integer|min:0',
             'min_stock' => 'required|integer|min:0',

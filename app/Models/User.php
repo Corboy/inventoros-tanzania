@@ -46,6 +46,16 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, HasRolesAndPermissions, InteractsWithWarehouses, LogsActivity, Notifiable;
 
     /**
+     * The accessors to append to the model's array form.
+     *
+     * @var list<string>
+     */
+    protected $appends = [
+        'is_admin',
+        'is_manager',
+    ];
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var list<string>

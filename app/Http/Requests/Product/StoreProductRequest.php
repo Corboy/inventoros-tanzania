@@ -50,6 +50,8 @@ final class StoreProductRequest extends FormRequest
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
+            'wholesale_price' => 'nullable|numeric|min:0',
+            'unit' => 'nullable|string|max:50',
             'purchase_price' => 'nullable|numeric|min:0',
             'currency' => 'required|string|max:3',
             'price_in_currencies' => 'nullable|array',

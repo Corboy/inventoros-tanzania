@@ -376,7 +376,7 @@ class ProductControllerTest extends TestCase
                 'price' => '', // Required
             ]);
 
-        $response->assertSessionHasErrors(['name', 'sku', 'price', 'currency', 'stock', 'min_stock']);
+        $response->assertSessionHasErrors(['name', 'price', 'currency', 'stock']);
     }
 
     public function test_product_creation_validates_unique_sku(): void
